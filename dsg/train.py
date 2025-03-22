@@ -25,7 +25,7 @@ def train(model, trainloader, num_epochs=10):
             loss.backward()
             opti.step()
             total_loss += loss.cpu().item()
-        print(f'{epoch}: {total_loss}')
+        print(f'{epoch}: {total_loss/len(trainloader)}')
     return model
 
 def eval(model, testloader):
@@ -38,8 +38,8 @@ def eval(model, testloader):
             adj = adj.to(device)
             y = y.to(device)
             y_pred = model(x, adj)
-            _, predicted = torch.max(y_pred.data, 1)
-            total += y.size(0)
+            _, predicted = torch.max(y_pred.data, 2)
+            total += y.size(0) * y.size(1)
             correct += (predicted == y).sum().item()
     print(f'Accuracy: {correct/total}')
     return correct/total
@@ -50,5 +50,6 @@ if __name__ == '__main__':
     model = DSImageG(3, 8, 8, 3, 1, 32, 32).to(device)
     trainloader = get_dataloader(train=True)
 
-    model = train(model, trainloader, 1)
+    eval(model, get_dataloader(train=False))
+    # model = train(model, trainloader, 1)
             

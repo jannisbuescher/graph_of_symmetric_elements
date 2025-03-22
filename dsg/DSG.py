@@ -36,10 +36,23 @@ class DSImageGLayer(nn.Module):
 
 class DSImageG(nn.Module):
 
-    def __init__(self, in_channels: int, hid_channels: int, out_channels: int, num_layers: int, k: int, h: int, w: int):
+    def __init__(
+        self,
+        in_channels: int,
+        hid_channels: int,
+        out_channels: int,
+        num_layers: int,
+        k: int,
+        h: int,
+        w: int,
+        node_level: bool = True,
+        aggregation: str = 'sum',
+    ):
         super().__init__()
         self.out_channels = out_channels
         self.k = k
+        self.node_level = node_level
+        self.aggregation = aggregation
         hw = h*w
 
         layers = [DSImageGLayer(in_channels, hid_channels, k)]
@@ -67,6 +80,20 @@ class DSImageG(nn.Module):
         x = x.view(b * n, d*h*w)
         x = self.linear(x) # (b*n, out_dim)
         x = x.view(b, n, self.out_channels)
+
+        if not self.node_level:
+            x = self._aggregate(x)
+        return x
+    
+    def _aggregate(self, x):
+        if self.aggregation == 'sum':
+            x = x.sum(dim=1)
+        elif self.aggregation == 'mean':
+            x = x.mean(dim=1)
+        elif self.aggregation == 'max':
+            x = x.max(dim=1)
+        else:
+            raise ValueError(f'Invalid aggregation method: {self.aggregation}')
         return x
 
 
@@ -81,3 +108,9 @@ class DSImageG(nn.Module):
                 A_iplus1 = torch.einsum('bnm,bmk->bnk', A_i, adj)
             cached_adj.append(A_iplus1.detach().clone().float())
         return cached_adj
+    
+
+class DSGraphG(nn.Module):
+
+    def __init__(self, ):
+        pass

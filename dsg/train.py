@@ -21,7 +21,7 @@ def train(model, trainloader, num_epochs=10):
             y = y.to(device)
             opti.zero_grad()
             y_pred = model(x, adj)
-            loss = loss_fn(y_pred, y)
+            loss = loss_fn(y_pred.view(-1, 8), y.view(-1))
             loss.backward()
             opti.step()
             total_loss += loss.cpu().item()

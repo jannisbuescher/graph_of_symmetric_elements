@@ -1,16 +1,11 @@
 import torch
+import torch_geometric as tg
+from dsg.ultra.datasets import FB15k237Inductive
 
-# b n d h w
-x = torch.rand((64, 4, 8, 2, 2))
-adj = torch.zeros((64, 4, 4))
-adj[0,0,1] = 1
-adj[0,0,2] = 1
-adj[0,0,3] = 1
-adj[0,2,3] = 1
-adj[0,1,0] = 1
-adj[0,2,0] = 1
-adj[0,3,0] = 1
-adj[0,3,2] = 1
+data = FB15k237Inductive('./data', "v1")
 
-y = torch.einsum('bnm,bmdhw->bndhw', adj, x)
-print(y)
+dataloader = tg.loader.DataLoader(data)
+
+for batch in dataloader:
+    edge_index = batch.edge_index
+    

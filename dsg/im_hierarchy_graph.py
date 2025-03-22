@@ -11,7 +11,7 @@ transform = transforms.Compose(
     [transforms.ToTensor(),
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-class HierarchicalImgeFeatures(Dataset):
+class HierarchicalImageFeatures(Dataset):
 
     def __init__(self, data, depth):
         self.dataset = data
@@ -84,7 +84,7 @@ def get_dataloader(train, depth):
     else:
         data = torchvision.datasets.CIFAR10(root='./data', train=False,
                                         download=True, transform=transform)
-    data = HierarchicalImgeFeatures(data, depth)
+    data = HierarchicalImageFeatures(data, depth)
     return torch.utils.data.DataLoader(data, batch_size=64,
                                         shuffle=train, num_workers=2)
 

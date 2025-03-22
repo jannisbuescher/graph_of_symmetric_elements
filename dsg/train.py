@@ -1,7 +1,7 @@
 import torch
 
-from mnist_graphs import get_dataloader
-from DSG import DSImageG
+from .mnist_graphs import get_dataloader
+from .DSG import DSImageG
 
 
 def train(model, trainloader, num_epochs=10):

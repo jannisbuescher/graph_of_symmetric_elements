@@ -10,7 +10,8 @@ setup(
     install_requires=[
         "torch",
         "torch-geometric",
-        "numpy"
+        "numpy",
+        "tqdm"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

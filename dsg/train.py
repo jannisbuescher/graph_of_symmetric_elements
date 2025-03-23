@@ -51,6 +51,69 @@ def eval(model, testloader):
     print(f'Accuracy: {correct/total}')
     return correct/total
 
+def graph_train(model, trainloader, num_epochs):
+    opti = torch.optim.Adam(model.parameters(), 1e-4)
+    loss_fn = torch.nn.CrossEntropyLoss()
+
+    model.train()
+
+    for epoch in range(num_epochs):
+        total_loss = 0
+        for datapoint in tqdm(trainloader):
+            x = datapoint.x
+            adj = datapoint.adj
+            sub_adj = datapoint.sub_adj
+
+            x = x.to(device)
+            adj = adj.to(device)
+            sub_adj = sub_adj.to(device)
+            # y = y.to(device)
+            opti.zero_grad()
+            y_pred = model(x, sub_adj, adj)
+
+            target_edge_index = datapoint.target_edge_index
+            y = datapoint.target_edge_type
+            y_pred_types = predict_relations_for_edges(target_edge_index, y_pred, datapoint.num_relations, datapoint.num_nodes)
+
+            loss = loss_fn(y_pred_types, y.view(-1))
+            loss.backward()
+            opti.step()
+            total_loss += loss.cpu().item()
+        print(f'{epoch}: {total_loss/len(trainloader)}')
+    return model
+
+def graph_eval(model, testloader):
+    model.eval()
+    total = 0
+    correct = 0
+    with torch.no_grad():
+        for datapoint in tqdm(testloader):
+            x = datapoint.x
+            adj = datapoint.adj
+            sub_adj = datapoint.sub_adj
+
+            x = x.to(device)
+            adj = adj.to(device)
+            sub_adj = sub_adj.to(device)
+            y_pred = model(x, sub_adj, adj)
+
+            target_edge_index = datapoint.target_edge_index
+            y = datapoint.target_edge_type
+            y_pred_types = predict_relations_for_edges(target_edge_index, y_pred, datapoint.num_relations, datapoint.num_nodes)
+
+            total += target_edge_index.shape[1]
+            correct += (y_pred_types.argmax(dim=1) == y).sum()
+        print(f'acc: {correct/total}')
+    return model
+
+def predict_relations_for_edges(target_edge_index, y_pred, num_relations, num_nodes):
+    """From the num_relations many subgraphs, obtain cosine similarity as measure of whether nodes are in relation"""
+    x_from = y_pred[:, target_edge_index[0]]
+    x_to = y_pred[:, target_edge_index[1]]
+    top = torch.einsum('nmd,nmd->nm', x_from, x_to)
+    norm = torch.mul(torch.linalg.norm(x_from, dim=2), torch.linalg.norm(x_to, dim=2))
+    res = torch.div(top, norm)
+    return res.view(-1, num_relations)
 
 if __name__ == '__main__':
     

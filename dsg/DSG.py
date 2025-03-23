@@ -20,7 +20,7 @@ class DSImageGLayer(nn.Module):
         x = x.view(b*n, d, h, w)
         L0_x = self.L[0](x)
         Lx = L0_x.view(b, n, -1, h, w)
-        for L, A_i in zip(self.L, cached_adj):
+        for L, A_i in zip(self.L[1:], cached_adj):
             # (b*n, d, h, w) -> (b, n, d, h, w), X_i -> \sum A_{ij}x_j
             x_i = x.view(b, n, d, h, w)
             if A_i.is_sparse: 
@@ -98,6 +98,8 @@ class DSImageG(nn.Module):
 
 
     def precompute_adj(self, adj):
+        if self.k == 0:
+            return []
         cached_adj = [adj.float()]
         A_i = adj
         for _ in range(self.k - 1):
@@ -110,6 +112,38 @@ class DSImageG(nn.Module):
         return cached_adj
     
 
+
+class GraphConvolution(nn.Module):
+    def __init__(self, in_features, out_features, bias=True):
+        super(GraphConvolution, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = nn.Parameter(torch.Tensor(in_features, out_features))
+        if bias:
+            self.bias = nn.Parameter(torch.Tensor(out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+    
+    def reset_parameters(self):
+        nn.init.xavier_uniform_(self.weight)
+        if self.bias is not None:
+            nn.init.zeros_(self.bias)
+    
+    def forward(self, x, adj):
+        """
+        x: (n, d) Feature matrix
+        adj: (n, n) Sparse adjacency matrix (torch.sparse.Tensor)
+        """
+        support = torch.matmul(x, self.weight)  # Linear transformation
+        output = torch.matmul(adj.float(), support)  # Sparse matrix multiplication
+        
+        if self.bias is not None:
+            output = output + self.bias
+        
+        return output
+
+
 class DSGraphGLayer(nn.Module):
 
     def __init__(
@@ -118,7 +152,9 @@ class DSGraphGLayer(nn.Module):
         out_channels: int,
         k: int
     ):
+        super().__init__()
         self.k = k
+        self.mean_aggregation = False
 
         L = [tg.nn.conv.GCNConv(in_channels, out_channels)]
 
@@ -131,18 +167,24 @@ class DSGraphGLayer(nn.Module):
         # x: (n, m, d)
         # adj: (m, m)
         n, m, d = x.shape
+        x = x.view(n*m, d)
         L0_x = self.L[0](x, adj)
-        Lx = L0_x
-        for L, A_i in zip(self.L, cached_adj):
+        Lx = L0_x.view(n, m, -1)
+        for L, A_i in zip(self.L[1:], cached_adj):
+            x_i = x.view(n, m, d)
             # (n, m, d) -> (n, m, d), X_i -> \sum A_{ij}x_j
             if A_i.is_sparse: 
-                x_i = torch.sparse.mm(A_i, x_i)
+                x_i = torch.sparse.mm(A_i, x_i.view(m, d)).view(n, m, d)
                 raise NotImplementedError()
             else:
                 x_i = torch.einsum('nj,jmd->nmd', A_i, x_i)
-            x_i = x_i           # (n, m, d)
-            Li_x = L(x_i, adj)  # (n, m, d')
-            Lx += Li_x
+                if self.mean_aggregation:
+                    div = A_i.sum(dim=1)
+                    div[div == 0] = 1
+                    x_i = torch.div(x_i, div.view(-1,1,1))
+            x_i = x_i.view(n*m, d)      # (n*m, d)
+            Li_x = L(x_i, adj)          # (n*m, d')
+            Lx += Li_x.view(n, m, -1)
         return Lx
 
     
@@ -162,37 +204,40 @@ class DSGraphG(nn.Module):
         super().__init__()
         self.k = k
         self.node_level = node_level
-        if node_level:
+        if not node_level:
             self.aggregation = aggregation
         
         layers = [DSGraphGLayer(in_channels, hid_channels, k)]
         
-        for _ in range(num_layers - 1):
+        for _ in range(num_layers):
             layers.append(DSGraphGLayer(hid_channels, hid_channels, k))
-
-        layers.append(DSGraphGLayer(hid_channels, out_channels, k))
 
         self.layers = nn.ModuleList(layers)
 
-        layer_norm = []
-        for _ in range(num_layers):
-            layer_norm.append(nn.LayerNorm((hid_channels, node_features)))
-        self.layer_norms = nn.ModuleList(layer_norm)
+        # layer_norm = []
+        # for _ in range(num_layers):
+        #     layer_norm.append(nn.LayerNorm((hid_channels,)))
+        # self.layer_norms = nn.ModuleList(layer_norm)
 
-        self.linear = nn.Linear(hid_channels * node_features, out_channels)
+        self.linear = nn.Sequential(
+            nn.Linear(hid_channels, hid_channels),
+            nn.ReLU(),
+            nn.Linear(hid_channels, out_channels)
+        )
 
     def forward(self, x, sub_adj, adj):
         """x: feature vector, adj: adjacency of meta graph, sub_adj: adjacency of graphs at the node"""
         cached_adj = self.precompute_adj(adj)
-        for layer, layer_norm in zip(self.layers, self.layer_norms):
+        #for layer, layer_norm in zip(self.layers, self.layer_norms):
+        for layer in self.layers:
             x = layer(x, sub_adj, cached_adj)
-            x = layer_norm(x)
+            # x = layer_norm(x)
             x = torch.relu(x)
 
         n, m, d = x.shape
         x = x.view(n*m, d)
         x = self.linear(x) # (n*m, out_dim)
-        x = x.view(n, m, self.out_channels)
+        x = x.view(n, m, -1)
 
         if not self.node_level:
             x = self._aggregate(x)
@@ -210,6 +255,8 @@ class DSGraphG(nn.Module):
         return x
 
     def precompute_adj(self, adj):
+        if self.k == 0:
+            return []
         cached_adj = [adj.float()]
         A_i = adj
         for _ in range(self.k - 1):

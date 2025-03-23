@@ -110,10 +110,15 @@ def predict_relations_for_edges(target_edge_index, y_pred, num_relations, num_no
     """From the num_relations many subgraphs, obtain cosine similarity as measure of whether nodes are in relation"""
     x_from = y_pred[:, target_edge_index[0]]
     x_to = y_pred[:, target_edge_index[1]]
-    top = torch.einsum('nmd,nmd->nm', x_from, x_to)
-    norm = torch.mul(torch.linalg.norm(x_from, dim=2), torch.linalg.norm(x_to, dim=2))
-    res = torch.div(top, norm)
-    return res.view(-1, num_relations)
+
+    had = x_from * x_to # (n, points, feat_dim)
+    had = had.mean(dim=2).T
+    return had
+
+    # top = torch.einsum('nmd,nmd->nm', x_from, x_to)
+    # norm = torch.mul(torch.linalg.norm(x_from, dim=2), torch.linalg.norm(x_to, dim=2))
+    # res = torch.div(top, norm)
+    # return res.T
 
 if __name__ == '__main__':
     
@@ -126,5 +131,5 @@ if __name__ == '__main__':
     model = DSImageG(3, 8, 10, 3, 1, 8, 8, False)
     trainloader = get_hier_dataloader(True, 2)
 
-    model = train(model, trainloader, 1)
+    model = train(model, trainloader, 5)
     eval(model, get_hier_dataloader(False, 2))

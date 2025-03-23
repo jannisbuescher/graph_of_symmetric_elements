@@ -16,29 +16,38 @@ class ToyGraphs(Dataset):
         return self.len
     
     def __getitem__(self, index):
-        adj = torch.randint(0,2,(3,3))
+        adj = torch.randint(0,2,(10,10))
         adj = torch.matmul(adj.T, adj)
         adj = torch.clamp(adj, max=1)
         adj.fill_diagonal_(0)
         if index < self.len // 2:
             big_adj = torch.block_diag(*([adj] * 3))
-            x = torch.ones((3,3,1))
+            x = torch.ones((3,10,1))
             y = 0
+            
+            # meta_adj = torch.randint(0,2,(3,3))
+            # meta_adj = torch.matmul(meta_adj.T, meta_adj)
+            # meta_adj = torch.clamp(meta_adj, max=1)
+            # meta_adj.fill_diagonal_(0)
 
             meta_adj = torch.ones((3,3))
             meta_adj.fill_diagonal_(0)
 
         else:
-            other_adj = torch.randint(0,2,(3,3))
+            other_adj = torch.randint(0,2,(10,10))
             other_adj = torch.matmul(other_adj.T, other_adj)
             other_adj = torch.clamp(other_adj, max=1)
             other_adj = other_adj - torch.eye(other_adj.shape[0])
 
             big_adj = torch.block_diag(*([adj] * 2 + [other_adj]*1))
-            x = torch.ones((3,3,1))
+            x = torch.ones((3,10,1))
             y = 1
 
+            # meta_adj = other_adj
+
             meta_adj = torch.zeros((3,3))
+            meta_adj[0,1] = 1
+            meta_adj[1,0] = 1
         
         # meta_adj = torch.randint(0,2,(3,3))
         # meta_adj = torch.matmul(meta_adj.T, meta_adj)
@@ -104,7 +113,7 @@ def graph_eval(model, testloader):
 if __name__ == '__main__':
     from dsg.DSG import DSGraphG
 
-    model = DSGraphG(1, 128, 2, 3, 0, 3, False)
+    model = DSGraphG(1, 128, 2, 3, 1, 3, False)
 
     data = get_dataloader()
 

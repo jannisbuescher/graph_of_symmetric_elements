@@ -12,14 +12,19 @@ class DSImageGLayer(nn.Module):
         
         L = []
         for _ in range(self.k + 1):
-            L.append(nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1))
+            L.append(nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1),
+                nn.ReLU(),
+                nn.MaxPool2d(2),
+                nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
+            ))
         self.L = nn.ModuleList(L)
         
     def forward(self, x, cached_adj):
         b, n, d, h, w = x.shape
         x = x.view(b*n, d, h, w)
         L0_x = self.L[0](x)
-        Lx = L0_x.view(b, n, -1, h, w)
+        Lx = L0_x.view(b, n, -1, h//2, w//2)
         for L, A_i in zip(self.L[1:], cached_adj):
             # (b*n, d, h, w) -> (b, n, d, h, w), X_i -> \sum A_{ij}x_j
             x_i = x.view(b, n, d, h, w)
@@ -30,7 +35,7 @@ class DSImageGLayer(nn.Module):
                 x_i = torch.einsum('bnm,bmdhw->bndhw', A_i, x_i)
             x_i = x_i.view(b*n, d, h, w) # (b*n, d, h, w)
             Li_x = L(x_i) # (b*n, d', h, w)
-            Lx += Li_x.view(b, n, -1, h, w)
+            Lx += Li_x.view(b, n, -1, h//2, w//2)
         return Lx
     
 
@@ -63,11 +68,15 @@ class DSImageG(nn.Module):
         self.layers = nn.ModuleList(layers)
 
         layer_norm = []
-        for _ in range(num_layers):
-            layer_norm.append(nn.LayerNorm((hid_channels, h, w)))
+        for i in range(num_layers):
+            layer_norm.append(nn.LayerNorm((hid_channels, h//(2*(i+1)), w//(2*(i+1)))))
         self.layer_norms = nn.ModuleList(layer_norm)
 
-        self.linear = nn.Linear(hid_channels * hw, out_channels)
+        self.linear = nn.Sequential(
+            nn.Linear(hid_channels * hw // (4 ** num_layers), hid_channels),
+            nn.ReLU(),
+            nn.Linear(hid_channels, out_channels)
+        )
 
     def forward(self, x, adj):
         cached_adj = self.precompute_adj(adj)

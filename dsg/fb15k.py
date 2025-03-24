@@ -100,6 +100,8 @@ def graph_train(model, trainloader, num_epochs):
             loss.backward()
             opti.step()
             total_loss += loss.cpu().item()
+            del loss, x, adj, sub_adj, y_pred, target_edge_index, y, y_pred_types
+
         print(f'{epoch}: {total_loss/len(trainloader)}')
     return model
 

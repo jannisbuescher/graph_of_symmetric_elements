@@ -69,11 +69,11 @@ class DSImageG(nn.Module):
 
         layer_norm = []
         for i in range(num_layers):
-            layer_norm.append(nn.LayerNorm((hid_channels, h//(2*(i+1)), w//(2*(i+1)))))
+            layer_norm.append(nn.LayerNorm((hid_channels, h//(2**(i+1)), w//(2**(i+1)))))
         self.layer_norms = nn.ModuleList(layer_norm)
 
         self.linear = nn.Sequential(
-            nn.Linear(hid_channels * hw // (4 ** num_layers), hid_channels),
+            nn.Linear(hid_channels * (h // (2 ** num_layers)) * (w // (2 ** num_layers)), hid_channels),
             nn.ReLU(),
             nn.Linear(hid_channels, out_channels)
         )

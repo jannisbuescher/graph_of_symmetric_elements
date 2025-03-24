@@ -91,7 +91,7 @@ class SiameseImage(nn.Module):
         n, m, _ = tensor.shape
         result = torch.zeros(n*m, n*m, device=tensor.device, dtype=torch.int)
         mask = torch.kron(torch.eye(n), torch.ones(m, m)).bool()
-        reshaped_tensor = tensor.reshape(n*m*m)
+        reshaped_tensor = tensor.reshape(n*m*m).int()
         result[mask] = reshaped_tensor
         return result
 

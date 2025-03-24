@@ -115,6 +115,10 @@ if __name__ == '__main__':
     from dsg.DSG import DSImageG
 
     model = DSImageG(1, 32, 2, 3, 1, 28, 28)
+
+    from dsg.siamese import SiameseImage
+
+    model = SiameseImage(1, 32, 2, 3, 28, 28)
     
     from dsg.train import train, eval
 

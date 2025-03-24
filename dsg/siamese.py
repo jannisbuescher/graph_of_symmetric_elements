@@ -67,14 +67,15 @@ class SiameseImage(nn.Module):
             x = layer_norm(x)
             x = torch.relu(x)
         
-        # shrink = 2 ** (len(self.cnns))
-        # x = x.view(b, n, -1, h // shrink, w // shrink)
+        shrink = 2 ** (len(self.cnns))
+        x = x.view(b, n, -1, h // shrink, w // shrink)
         x = x.view(b*n, -1)
         x = self.linear(x)
 
         big_adj = self._tensor_to_block_diag_torch(adj)
         big_adj = tg.utils.dense_to_sparse(big_adj)[0]
 
+        # Phase II: independent graph convolutions
         for graph_conv in self.graph_convs:
             x = graph_conv(x, big_adj)
             x = torch.relu(x)

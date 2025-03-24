@@ -2,7 +2,7 @@ import torch
 import torch_geometric as tg
 import torch.nn as nn
 
-from dsg.ultra.datasets import FB15k237Inductive, WN18RRInductive, NELLInductive
+from dsg.ultra.datasets import FB15k237Inductive, WN18RRInductive, NELLInductive, FB15k237_10
 
 class GraphStack(tg.data.Dataset):
 
@@ -63,16 +63,14 @@ def connect_relations(overlap):
     overlap[overlap < tao] = 0
     overlap[overlap >= tao] = 1
     
-    # connection by relative top-k
-
     return overlap
 
 
-
 def get_dataloader(train, node_features):
-    data = NELLInductive('./data', "v1")
+    data = FB15k237Inductive('./data', "v1")
     data = GraphStack(data, node_features)
-    return tg.data.DataLoader(data)
+    return tg.loader.DataLoader(data)
+
 
 if __name__ == '__main__':
 

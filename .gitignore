@@ -4,3 +4,6 @@
 /data
 /DSG.*
 /grail
+*.pyc
+/ultra/__pycache__
+*dsg/ultra/__pycache__/datasets.cpython-312.pyc

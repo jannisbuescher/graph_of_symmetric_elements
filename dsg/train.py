@@ -130,8 +130,8 @@ if __name__ == '__main__':
 
     from dsg.siamese import SiameseImage
 
-    # model = DSImageG(3, 8, 10, 3, 0, 8, 8, False)
-    model = SiameseImage(3, 8, 10, 2, 8, 8, False)
+    # model = DSImageG(3, 8, 10, 3, 1, 8, 8, False)
+    model = SiameseImage(3, 128, 10, 2, 8, 8, False)
     trainloader = get_hier_dataloader(True, 2)
 
     model = train(model, trainloader, 5)

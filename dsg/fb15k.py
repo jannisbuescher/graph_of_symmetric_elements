@@ -91,6 +91,9 @@ def graph_train(model, trainloader, num_epochs):
             target_edge_index = datapoint.edge_index
             y = datapoint.edge_type
 
+            target_edge_index = target_edge_index.to(device)
+            y = y.to(device)
+
             y_pred_types = predict_relations_for_edges(target_edge_index, y_pred, datapoint.num_relations, datapoint.num_nodes)
 
             loss = loss_fn(y_pred_types, y.view(-1))
@@ -117,6 +120,9 @@ def graph_eval(model, testloader):
 
             target_edge_index = datapoint.edge_index
             y = datapoint.edge_type
+            target_edge_index = target_edge_index.to(device)
+            y = y.to(device)
+
             y_pred_types = predict_relations_for_edges(target_edge_index, y_pred, datapoint.num_relations, datapoint.num_nodes)
 
             total += target_edge_index.shape[1]

@@ -1,10 +1,6 @@
 import torch
 from tqdm import tqdm
 
-from dsg.im_transform_graphs import get_dataloader
-from dsg.im_hierarchy_graph import get_dataloader as get_hier_dataloader
-from dsg.DSG import DSImageG
-
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
@@ -120,9 +116,66 @@ def predict_relations_for_edges(target_edge_index, y_pred, num_relations, num_no
     # res = torch.div(top, norm)
     # return res.T
 
+
+def compare_model(model, trainloader, testloader, num_epochs):
+    opti = torch.optim.Adam(model.parameters(), 1e-4)
+    loss_fn = torch.nn.CrossEntropyLoss()
+
+    evals = []
+
+    model.train()
+
+    for epoch in tqdm(range(num_epochs)):
+        total_loss = 0
+        for x, adj, y in trainloader:
+            x = x.to(device)
+            adj = adj.to(device)
+            y = y.to(device)
+            opti.zero_grad()
+            y_pred = model(x, adj)
+            loss = loss_fn(y_pred.view(-1, y_pred.shape[-1]), y.view(-1))
+            loss.backward()
+            opti.step()
+            total_loss += loss.cpu().item()
+        evals.append(eval_model(model, testloader))
+    return evals
+
+def eval_model(model, testloader):
+    model.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for x, adj, y in testloader:
+            x = x.to(device)
+            adj = adj.to(device)
+            y = y.to(device)
+            y_pred = model(x, adj)
+            if len(y_pred.shape) == 2:
+                _, predicted = torch.max(y_pred.data, 1)
+                total += y.size(0)
+            elif len(y_pred.shape) == 3:
+                _, predicted = torch.max(y_pred.data, 2)
+                total += y.size(0) * y.size(1)
+            else:
+                raise Exception()
+            correct += (predicted == y).sum().item()
+    return correct/total
+
+
+
+def compare(model_list, trainloader, testloader, num_epochs):
+    acc = []
+    for model in model_list:
+        acc.append(compare_model(model, trainloader, testloader, num_epochs))
+    return acc
+
 if __name__ == '__main__':
-    
-    # model = DSImageG(1, 8, 8, 3, 1, 28, 28).to(device)
+
+    from dsg.im_transform_graphs import get_dataloader
+    from dsg.im_hierarchy_graph import get_dataloader as get_hier_dataloader
+
+    from dsg.DSG import DSImageG
+    model1 = DSImageG(3, 8, 10, 3, 1, 8, 8, False).to(device)
     # trainloader = get_dataloader(train=True, dataset='MNIST')
 
     # model = train(model, trainloader, 10)
@@ -131,8 +184,12 @@ if __name__ == '__main__':
     from dsg.siamese import SiameseImage
 
     # model = DSImageG(3, 8, 10, 3, 1, 8, 8, False)
-    model = SiameseImage(3, 128, 10, 2, 8, 8, False)
+    model2 = SiameseImage(3, 8, 10, 2, 8, 8, False)
     trainloader = get_hier_dataloader(True, 2)
+    testloader = get_hier_dataloader(False, 2)
 
-    model = train(model, trainloader, 5)
-    eval(model, get_hier_dataloader(False, 2))
+    # model = train(model, trainloader, 5)
+    # eval(model, get_hier_dataloader(False, 2))
+
+    eval_list = compare([model1, model2], trainloader, testloader, 3)
+    print(eval_list)

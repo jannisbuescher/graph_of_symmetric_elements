@@ -100,6 +100,8 @@ def graph_train(model, trainloader, num_epochs):
             loss.backward()
             opti.step()
             total_loss += loss.cpu().item()
+
+            # free memory
             del loss, x, adj, sub_adj, y_pred, target_edge_index, y, y_pred_types
 
         print(f'{epoch}: {total_loss/len(trainloader)}')
@@ -130,7 +132,6 @@ def graph_eval(model, testloader):
             total += target_edge_index.shape[1]
             correct += (y_pred_types.argmax(dim=1) == y).sum()
         print(f'acc: {correct/total}')
-    return model
 
 
 def predict_relations_for_edges(target_edge_index, y_pred, num_relations, num_nodes):

@@ -19,7 +19,7 @@ class DSImageGLayer(nn.Module):
                 nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
             ))
         self.L = nn.ModuleList(L)
-        
+
     def forward(self, x, cached_adj):
         b, n, d, h, w = x.shape
         x = x.view(b*n, d, h, w)

@@ -70,10 +70,10 @@ def img_hierarchy_transform(image, depth):
     x = torch.stack(all_parts)
     
     n = len(all_parts)
-    adj = torch.zeros((n, n), dtype=torch.int)
+    adj = torch.zeros((n, n), dtype=torch.float)
     for i, j in edges:
-        adj[i, j] = 1
-        adj[j, i] = 1
+        adj[i, j] = 1.
+        adj[j, i] = 1.
         
     return x, adj
 

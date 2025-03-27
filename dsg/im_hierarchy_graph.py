@@ -86,7 +86,7 @@ def get_dataloader(train, depth):
                                         download=True, transform=transform)
     data = HierarchicalImageFeatures(data, depth)
     return torch.utils.data.DataLoader(data, batch_size=64,
-                                        shuffle=train, num_workers=16)
+                                        shuffle=train, num_workers=2)
 
 
 if __name__ == "__main__":

@@ -95,7 +95,7 @@ def get_dataloader(train, graph_size, mnist=True, num_graphs=1000):
         data = torchvision.datasets.MNIST(root='./data', train=train, download=True, transform=transform_mnist)
         data = ImageClassData(n=num_graphs, data=data, size=graph_size, num_classes=10)
 
-        loader = torch.utils.data.DataLoader(data, batch_size=64, shuffle=train, num_workers=16)
+        loader = torch.utils.data.DataLoader(data, batch_size=64, shuffle=train, num_workers=2)
     else:
         transform_cifar = transforms.Compose(
             [transforms.ToTensor(),
@@ -103,7 +103,7 @@ def get_dataloader(train, graph_size, mnist=True, num_graphs=1000):
         data = torchvision.datasets.CIFAR10(root='./data', train=train, download=True, transform=transform_cifar)
         data = ImageClassData(n=num_graphs, data=data, size=graph_size, num_classes=10)
 
-        loader = torch.utils.data.DataLoader(data, batch_size=64, shuffle=train, num_workers=16)
+        loader = torch.utils.data.DataLoader(data, batch_size=64, shuffle=train, num_workers=2)
 
     return loader
 

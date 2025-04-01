@@ -31,8 +31,12 @@ def generate(data, size, classes):
     edges = []
     for i in range(size):
         # start with one element
-        if i < 2:
+        if i  == 0:
             x.append(choice(data))
+        elif i == 1:
+            x.append(choice(data))
+            edges.append((0,1))
+            edges.append((1,0))
         else:
             connect_to = randint(0,i-1)
 
@@ -109,12 +113,12 @@ def get_dataloader(train, graph_size, mnist=True, num_graphs=1000):
 
 
 if __name__ == '__main__':
-    trainloader = get_dataloader(True, 10)
-    testloader = get_dataloader(False, 10)
+    trainloader = get_dataloader(True, 30)
+    testloader = get_dataloader(False, 30)
 
     from dsg.DSG_paper import DSImageG
 
-    model = DSImageG(1, 32, 2, 3, 28, 28, use_agg_fn=False, use_LH2=True, use_LH4=True)
+    model = DSImageG(1, 32, 2, 2, 28, 28, use_agg_fn=False, use_LH2=True, use_LH4=True)
 
     # from dsg.siamese import SiameseImage
 

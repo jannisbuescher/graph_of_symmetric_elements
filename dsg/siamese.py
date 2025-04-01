@@ -41,6 +41,11 @@ class SiameseImage(nn.Module):
             layer_norm.append(nn.LayerNorm((hid_channels, h//(2**(i+1)), w//(2**(i+1)))))
         self.layer_norms = nn.ModuleList(layer_norm)
 
+        layer_norm2 = []
+        for i in range(num_layers):
+            layer_norm2.append(nn.LayerNorm((hid_channels)))
+        self.layer_norms2 = nn.ModuleList(layer_norm2)
+
         self.linear = nn.Sequential(
             nn.Linear(hid_channels * (h // (2 ** num_layers)) * (w // (2 ** num_layers)), hid_channels),
             nn.ReLU(),
@@ -76,8 +81,9 @@ class SiameseImage(nn.Module):
         big_adj = tg.utils.dense_to_sparse(big_adj)[0]
 
         # Phase II: independent graph convolutions
-        for graph_conv in self.graph_convs:
+        for graph_conv, layer_norm in zip(self.graph_convs, self.layer_norms2):
             x = graph_conv(x, big_adj)
+            x = layer_norm(x)
             x = torch.relu(x)
         
         x = self.linear2(x)
